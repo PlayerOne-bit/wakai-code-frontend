@@ -1,8 +1,6 @@
-// components/Post/PostCard.tsx
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 
-// This shape should match your Mongo Post model exactly
 type Post = {
   _id: string;
   title: string;
@@ -12,8 +10,6 @@ type Post = {
   createdAt: string;
 };
 
-// { post }: { post: Post } destructures the "post" prop directly
-// out of the props object, and types it in the same line
 export default function PostCard({ post }: { post: Post }) {
   return (
     <View style={styles.card}>
@@ -42,7 +38,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 2, // Android needs elevation for shadows, iOS uses shadowOpacity/Radius
+    elevation: 2, 
   },
   image: {
     width: '100%',
