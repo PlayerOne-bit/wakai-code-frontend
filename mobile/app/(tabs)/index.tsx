@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FlatList } from 'react-native';
+import {Text, FlatList } from 'react-native';
 import api from '../../api/config';
 import PostCard from '../../components/Post/PostCard';
 
@@ -24,10 +24,13 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <FlatList
-      data={posts}
-      keyExtractor={item => item._id}
-      renderItem={({ item }) => <PostCard post={item} />}
-    />
+      <>
+        <Text>Johnny Sins</Text>
+        <FlatList
+          data={posts}
+          keyExtractor={item => item._id}
+          renderItem={({ item }) => <PostCard post={item} />}
+        />
+      </>
   );
 }
