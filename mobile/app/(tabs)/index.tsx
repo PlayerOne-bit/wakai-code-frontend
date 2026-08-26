@@ -25,7 +25,6 @@ export default function HomeScreen() {
 
   return (
       <>
-        <Text>Johnny Sins</Text>
         <FlatList
           data={posts}
           keyExtractor={item => item._id}
