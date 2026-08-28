@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import {Text, FlatList } from 'react-native';
+import { FlatList, Button } from 'react-native';
 import api from '../../api/config';
 import PostCard from '../../components/Post/PostCard';
+import { useAuth } from '../../context/AuthContext';
 
 type Post = {
   _id: string;
@@ -13,6 +14,7 @@ type Post = {
 };
 
 export default function HomeScreen() {
+  const { logout } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,12 +26,11 @@ export default function HomeScreen() {
   }, []);
 
   return (
-      <>
-        <FlatList
-          data={posts}
-          keyExtractor={item => item._id}
-          renderItem={({ item }) => <PostCard post={item} />}
-        />
-      </>
+    <FlatList
+      data={posts}
+      keyExtractor={item => item._id}
+      renderItem={({ item }) => <PostCard post={item} />}
+      ListHeaderComponent={<Button title="Log Out (test)" onPress={logout} />}
+    />
   );
 }
