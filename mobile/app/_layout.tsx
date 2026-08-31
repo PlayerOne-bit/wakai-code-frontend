@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { AuthProvider, useAuth } from '../context/AuthContext';
-
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 function LoadingScreen() {
   return (
     <View style={styles.loadingContainer}>
@@ -18,7 +18,7 @@ function RootNavigator() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false}}>
       {user ? (
         <Stack.Screen name="(tabs)" />
       ) : (
@@ -30,9 +30,11 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootNavigator />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <RootNavigator />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

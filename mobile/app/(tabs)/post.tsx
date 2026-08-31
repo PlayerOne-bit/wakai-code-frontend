@@ -6,7 +6,7 @@ import api from '../../api/config';
 import PostCard from '../../components/Post/PostCard';
 import CategorySortBar from '../../components/Post/CategorySortBar';
 import ProfileHeader from '../../components/Profile/ProfileHeader';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 type Post = {
   _id: string;
   title: string;
@@ -76,44 +76,46 @@ export default function PostScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={listData}
-        keyExtractor={item => (item.type === 'filter' ? 'filter-bar' : item._id)}
-        ListHeaderComponent={
-          <ProfileHeader
-            name="Wakai One"
-            handle="@levelorigin"
-            roles={['Game Developer', 'Software Developer']}
-            bio="I build worlds from scratch — rigging characters in Blender, scripting economies in Unity, and shipping apps on the side. Currently leveling up through STI while running Level Origin as an independent studio-of-one."
-            stats={[
-              { label: 'Projects Shipped', value: 5 },
-              { label: 'Years Building', value: 3 },
-              { label: 'Tools Mastered', value: 6 },
-            ]}
-            onDonate={() => {}}
-          />
-        }
-        stickyHeaderIndices={[1]} // index 0 = ListHeaderComponent, index 1 = filter row
-        renderItem={({ item }) =>
-          item.type === 'filter' ? (
-            <CategorySortBar
-              sortBy={sortBy}
-              setSortBy={setSortBy}
-              category={category}
-              setCategory={setCategory}
+    <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.container}>
+        <FlatList
+            data={listData}
+            keyExtractor={item => (item.type === 'filter' ? 'filter-bar' : item._id)}
+            ListHeaderComponent={
+            <ProfileHeader
+                name="Wakai One"
+                handle="@levelorigin"
+                roles={['Game Developer', 'Software Developer']}
+                bio="I build worlds from scratch — rigging characters in Blender, scripting economies in Unity, and shipping apps on the side. Currently leveling up through STI while running Level Origin as an independent studio-of-one."
+                stats={[
+                { label: 'Projects Shipped', value: 5 },
+                { label: 'Years Building', value: 3 },
+                { label: 'Tools Mastered', value: 6 },
+                ]}
+                onDonate={() => {}}
             />
-          ) : (
-            <PostCard post={item} />
-          )
-        }
-        contentContainerStyle={{ paddingBottom: 90 }}
-      />
+            }
+            stickyHeaderIndices={[1]} // index 0 = ListHeaderComponent, index 1 = filter row
+            renderItem={({ item }) =>
+            item.type === 'filter' ? (
+                <CategorySortBar
+                sortBy={sortBy}
+                setSortBy={setSortBy}
+                category={category}
+                setCategory={setCategory}
+                />
+            ) : (
+                <PostCard post={item} />
+            )
+            }
+            contentContainerStyle={{ paddingBottom: 90 }}
+        />
 
-      <TouchableOpacity style={styles.uploadButton} onPress={() => {}}>
-        <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity style={styles.uploadButton} onPress={() => {}}>
+            <Ionicons name="add" size={28} color="#fff" />
+        </TouchableOpacity>
+        </View>
+    </SafeAreaView>
   );
 }
 

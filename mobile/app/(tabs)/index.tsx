@@ -1,9 +1,10 @@
+// app/(tabs)/index.tsx
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { useAuth } from '../../context/AuthContext';
 
 const mockStats = {
-  earnings: 1240.5,
+  earnings: 12400.5,
   posts: 18,
   projects: 5,
   likes: 342,
@@ -26,6 +27,8 @@ function StatCard({ label, value }: StatCardProps) {
 }
 
 export default function DashboardScreen() {
+  const { logout } = useAuth();
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.heading}>Dashboard</Text>
@@ -38,6 +41,10 @@ export default function DashboardScreen() {
         <StatCard label="Comments" value={mockStats.comments} />
         <StatCard label="Clients" value={mockStats.clients} />
       </View>
+
+      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+        <Text style={styles.logoutButtonText}>Log Out</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -64,4 +71,14 @@ const styles = StyleSheet.create({
   },
   cardValue: { fontSize: 22, fontWeight: '700' },
   cardLabel: { fontSize: 13, color: '#777', marginTop: 4 },
+  logoutButton: {
+    marginTop: 12,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0455f',
+  },
+  logoutButtonText: { color: '#e0455f', fontWeight: '700', fontSize: 14 },
 });
