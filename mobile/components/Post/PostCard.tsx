@@ -1,6 +1,14 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+type Comment = {
+  _id: string;
+  authorId: string;
+  authorName: string;
+  text: string;
+  createdAt: string;
+};
 
 type Post = {
   _id: string;
@@ -8,12 +16,25 @@ type Post = {
   description?: string;
   imageUrl?: string;
   createdAt: string;
-  likes: number;
-  comments: number;
+  likes?: string[];
+  comments?: Comment[];
   category: string;
 };
 
-export default function PostCard({ post }: { post: Post }) {
+type Props = {
+  post: Post;
+  currentUserId: string;
+  onLikePress: () => void;
+  onCommentPress: () => void;
+};
+
+export default function PostCard({ post, currentUserId, onLikePress, onCommentPress }: Props) {
+  // Normalize once at the top — everything below can safely assume
+  // these are real arrays, never undefined.
+  const likes = post.likes ?? [];
+  const comments = post.comments ?? [];
+  const liked = likes.includes(currentUserId);
+
   const formattedDate = new Date(post.createdAt).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -34,14 +55,21 @@ export default function PostCard({ post }: { post: Post }) {
 
       <View style={styles.footer}>
         <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Ionicons name="heart-outline" size={16} color="#777" />
-            <Text style={styles.statText}>{post.likes}</Text>
-          </View>
-          <View style={styles.statItem}>
+          <TouchableOpacity style={styles.statItem} onPress={onLikePress}>
+            <Ionicons
+              name={liked ? 'heart' : 'heart-outline'}
+              size={18}
+              color={liked ? '#e0455f' : '#777'}
+            />
+            <Text style={[styles.statText, liked && styles.statTextActive]}>
+              {likes.length}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.statItem} onPress={onCommentPress}>
             <Ionicons name="chatbubble-outline" size={16} color="#777" />
-            <Text style={styles.statText}>{post.comments}</Text>
-          </View>
+            <Text style={styles.statText}>{comments.length}</Text>
+          </TouchableOpacity>
         </View>
         <Text style={styles.date}>{formattedDate}</Text>
       </View>
@@ -61,7 +89,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  image: { width: '100%', height: 180, borderRadius: 8, marginBottom: 8 },
+  image: { width: '100%', height: 500, borderRadius: 8, marginBottom: 8 },
   title: { fontSize: 16, fontWeight: '600' },
   description: { fontSize: 14, color: '#555', marginTop: 4 },
   footer: {
@@ -76,5 +104,6 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row' },
   statItem: { flexDirection: 'row', alignItems: 'center', marginRight: 16 },
   statText: { marginLeft: 4, fontSize: 13, color: '#777' },
+  statTextActive: { color: '#e0455f', fontWeight: '600' },
   date: { fontSize: 12, color: '#aaa' },
 });

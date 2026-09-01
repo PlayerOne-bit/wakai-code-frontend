@@ -6,54 +6,74 @@ import api from '../../api/config';
 import PostCard from '../../components/Post/PostCard';
 import CategorySortBar from '../../components/Post/CategorySortBar';
 import ProfileHeader from '../../components/Profile/ProfileHeader';
+import { useAuth } from '../../context/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+type Comment = {
+  _id: string;
+  authorId: string;
+  authorName: string;
+  text: string;
+  createdAt: string;
+};
+
 type Post = {
   _id: string;
   title: string;
   description?: string;
   imageUrl?: string;
   createdAt: string;
-  likes: number;
-  comments: number;
+  likes?: string[];    // optional — matches reality, some documents don't have this
+  comments?: Comment[]; // same
   category: string;
 };
 
 type SortOption = 'recent' | 'liked' | 'commented';
-const CATEGORIES = ['All', 'Design', 'Code', 'Art', 'Photography'];
 
-function mockStatsFor(id: string) {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) % 1000;
-  }
-  return {
-    likes: hash % 50,
-    comments: hash % 12,
-    category: CATEGORIES[(hash % (CATEGORIES.length - 1)) + 1],
-  };
-}
-
-// A tagged union: every row in the list is either the filter bar
-// or a post, and TypeScript narrows which fields are available
-// based on which "type" it is once you check it.
 type ListRow = { type: 'filter' } | ({ type: 'post' } & Post);
 
 export default function PostScreen() {
+  const { user } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('recent');
   const [category, setCategory] = useState('All');
 
   useEffect(() => {
-    api.get('/api/posts')
-      .then(res => {
-        const withMockStats = res.data.map((post: any) => ({
-          ...post,
-          ...mockStatsFor(post._id),
-        }));
-        setPosts(withMockStats);
-      })
-      .catch(err => console.error(err));
+    fetchPosts();
   }, []);
+
+  function fetchPosts() {
+    api.get('/api/posts')
+      .then(res => setPosts(res.data))
+      .catch(err => console.error(err));
+  }
+
+  async function handleLike(postId: string) {
+    if (!user) return;
+
+    setPosts(prev =>
+      prev.map(p => {
+        if (p._id !== postId) return p;
+
+        const currentLikes = p.likes ?? [];
+        const alreadyLiked = currentLikes.includes(user.id);
+
+        return {
+          ...p,
+          likes: alreadyLiked
+            ? currentLikes.filter(id => id !== user.id)
+            : [...currentLikes, user.id],
+        };
+      })
+    );
+
+    try {
+      await api.post(`/api/posts/${postId}/like`);
+    } catch (err) {
+      console.error(err);
+      fetchPosts();
+    }
+  }
 
   const filteredPosts = useMemo(() => {
     let result = posts;
@@ -61,15 +81,18 @@ export default function PostScreen() {
       result = result.filter(p => p.category === category);
     }
     result = [...result].sort((a, b) => {
-      if (sortBy === 'liked') return b.likes - a.likes;
-      if (sortBy === 'commented') return b.comments - a.comments;
+      const aLikes = a.likes?.length ?? 0;
+      const bLikes = b.likes?.length ?? 0;
+      const aComments = a.comments?.length ?? 0;
+      const bComments = b.comments?.length ?? 0;
+
+      if (sortBy === 'liked') return bLikes - aLikes;
+      if (sortBy === 'commented') return bComments - aComments;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
     return result;
   }, [posts, sortBy, category]);
 
-  // First row is always the filter sentinel; the rest are posts.
-  // This is what makes the filter bar occupy a real, sticky-able index.
   const listData: ListRow[] = useMemo(
     () => [{ type: 'filter' }, ...filteredPosts.map(p => ({ type: 'post' as const, ...p }))],
     [filteredPosts]
@@ -77,44 +100,49 @@ export default function PostScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.container}>
+      <View style={styles.container}>
         <FlatList
-            data={listData}
-            keyExtractor={item => (item.type === 'filter' ? 'filter-bar' : item._id)}
-            ListHeaderComponent={
+          data={listData}
+          keyExtractor={item => (item.type === 'filter' ? 'filter-bar' : item._id)}
+          ListHeaderComponent={
             <ProfileHeader
-                name="Wakai One"
-                handle="@levelorigin"
-                roles={['Game Developer', 'Software Developer']}
-                bio="I build worlds from scratch — rigging characters in Blender, scripting economies in Unity, and shipping apps on the side. Currently leveling up through STI while running Level Origin as an independent studio-of-one."
-                stats={[
+              name="Wakai One"
+              handle="@levelorigin"
+              roles={['Game Developer', 'Software Developer']}
+              bio="I build worlds from scratch — rigging characters in Blender, scripting economies in Unity, and shipping apps on the side. Currently leveling up through STI while running Level Origin as an independent studio-of-one."
+              stats={[
                 { label: 'Projects Shipped', value: 5 },
                 { label: 'Years Building', value: 3 },
                 { label: 'Tools Mastered', value: 6 },
-                ]}
-                onDonate={() => {}}
+              ]}
+              onDonate={() => {}}
             />
-            }
-            stickyHeaderIndices={[1]} // index 0 = ListHeaderComponent, index 1 = filter row
-            renderItem={({ item }) =>
+          }
+          stickyHeaderIndices={[1]}
+          renderItem={({ item }) =>
             item.type === 'filter' ? (
-                <CategorySortBar
+              <CategorySortBar
                 sortBy={sortBy}
                 setSortBy={setSortBy}
                 category={category}
                 setCategory={setCategory}
-                />
+              />
             ) : (
-                <PostCard post={item} />
+              <PostCard
+                post={item}
+                currentUserId={user?.id ?? ''}
+                onLikePress={() => handleLike(item._id)}
+                onCommentPress={() => {}}
+              />
             )
-            }
-            contentContainerStyle={{ paddingBottom: 90 }}
+          }
+          contentContainerStyle={{ paddingBottom: 90 }}
         />
 
         <TouchableOpacity style={styles.uploadButton} onPress={() => {}}>
-            <Ionicons name="add" size={28} color="#fff" />
+          <Ionicons name="add" size={28} color="#fff" />
         </TouchableOpacity>
-        </View>
+      </View>
     </SafeAreaView>
   );
 }
