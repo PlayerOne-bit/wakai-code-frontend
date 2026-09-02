@@ -43,4 +43,4 @@ app-example
 /android
 
 
-config
+api/config.js
