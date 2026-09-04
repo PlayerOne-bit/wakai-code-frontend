@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 const mockStats = {
   earnings: 12400.5,
   posts: 18,
@@ -42,7 +43,10 @@ export default function DashboardScreen() {
           <StatCard label="Clients" value={mockStats.clients} />
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+        <TouchableOpacity style={styles.logoutButton} onPress={async () => {
+            await logout();
+            router.replace('/login');
+          }}>
           <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
       </ScrollView>

@@ -1,6 +1,11 @@
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+// components/Post/PostCard.tsx
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const CARD_HORIZONTAL_MARGIN = 12 * 2; // matches card's marginHorizontal on both sides
+const MAX_IMAGE_HEIGHT = Dimensions.get('window').height * 0.6; // stops extreme portraits from dominating the feed
 
 type Comment = {
   _id: string;
@@ -29,11 +34,29 @@ type Props = {
 };
 
 export default function PostCard({ post, currentUserId, onLikePress, onCommentPress }: Props) {
-  // Normalize once at the top — everything below can safely assume
-  // these are real arrays, never undefined.
   const likes = post.likes ?? [];
   const comments = post.comments ?? [];
   const liked = likes.includes(currentUserId);
+
+  // Real pixel dimensions of the source image, fetched once when the
+  // uri is known — Image.getSize hits the image's own metadata, it
+  // doesn't wait for the image to actually render first.
+  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
+
+  useEffect(() => {
+    if (post.imageUrl) {
+      Image.getSize(
+        post.imageUrl,
+        (width, height) => setImageSize({ width, height }),
+        (err) => console.error('Failed to get image size', err)
+      );
+    }
+  }, [post.imageUrl]);
+
+  const cardWidth = SCREEN_WIDTH - CARD_HORIZONTAL_MARGIN;
+  const computedHeight = imageSize
+    ? Math.min(cardWidth * (imageSize.height / imageSize.width), MAX_IMAGE_HEIGHT)
+    : undefined;
 
   const formattedDate = new Date(post.createdAt).toLocaleDateString('en-US', {
     month: 'short',
@@ -43,8 +66,12 @@ export default function PostCard({ post, currentUserId, onLikePress, onCommentPr
 
   return (
     <View style={styles.card}>
-      {post.imageUrl ? (
-        <Image source={{ uri: post.imageUrl }} style={styles.image} />
+      {post.imageUrl && computedHeight ? (
+        <Image
+          source={{ uri: post.imageUrl }}
+          style={[styles.image, { width: cardWidth, height: computedHeight }]}
+          resizeMode="contain"
+        />
       ) : null}
 
       <Text style={styles.title}>{post.title}</Text>
@@ -89,7 +116,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  image: { width: '100%', height: 500, borderRadius: 8, marginBottom: 8 },
+  image: { borderRadius: 8, marginBottom: 8, backgroundColor: '#f0f0f0' },
   title: { fontSize: 16, fontWeight: '600' },
   description: { fontSize: 14, color: '#555', marginTop: 4 },
   footer: {
