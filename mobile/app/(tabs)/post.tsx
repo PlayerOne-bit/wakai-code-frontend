@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../api/config';
 import PostCard from '../../components/Post/PostCard';
 import CategorySortBar from '../../components/Post/CategorySortBar';
+import CommentsModal from '../../components/Post/CommentsModal';
 import ProfileHeader from '../../components/Profile/ProfileHeader';
 import { useAuth } from '../../context/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -37,7 +38,7 @@ export default function PostScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('recent');
   const [category, setCategory] = useState('All');
-
+  const [activePostId, setActivePostId] = useState<string | null>(null);
   useEffect(() => {
     fetchPosts();
   }, []);
@@ -74,6 +75,18 @@ export default function PostScreen() {
       fetchPosts();
     }
   }
+  async function handleAddComment(postId: string, text: string) {
+    if (!user) return;
+
+    try {
+      const res = await api.post(`/api/posts/${postId}/comment`, { text });
+      setPosts(prev =>
+        prev.map(p => (p._id === postId ? { ...p, comments: res.data.comments } : p))
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   const filteredPosts = useMemo(() => {
     let result = posts;
@@ -97,7 +110,7 @@ export default function PostScreen() {
     () => [{ type: 'filter' }, ...filteredPosts.map(p => ({ type: 'post' as const, ...p }))],
     [filteredPosts]
   );
-
+const activePost = posts.find(p => p._id === activePostId);
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.container}>
@@ -132,7 +145,7 @@ export default function PostScreen() {
                 post={item}
                 currentUserId={user?.id ?? ''}
                 onLikePress={() => handleLike(item._id)}
-                onCommentPress={() => {}}
+                onCommentPress={() => setActivePostId(item._id)}
               />
             )
           }
@@ -142,6 +155,12 @@ export default function PostScreen() {
         <TouchableOpacity style={styles.uploadButton} onPress={() => {}}>
           <Ionicons name="add" size={28} color="#fff" />
         </TouchableOpacity>
+        <CommentsModal
+          visible={activePostId !== null}
+          onClose={() => setActivePostId(null)}
+          comments={activePost?.comments ?? []}
+          onSubmit={(text) => activePostId && handleAddComment(activePostId, text)}
+        />
       </View>
     </SafeAreaView>
   );
