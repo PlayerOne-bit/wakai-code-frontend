@@ -1,6 +1,6 @@
 // app/(tabs)/post.tsx
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../api/config';
 import PostCard from '../../components/Post/PostCard';
@@ -9,6 +9,8 @@ import CommentsModal from '../../components/Post/CommentsModal';
 import ProfileHeader from '../../components/Profile/ProfileHeader';
 import { useAuth } from '../../context/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router,useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 
 type Comment = {
   _id: string;
@@ -39,9 +41,11 @@ export default function PostScreen() {
   const [sortBy, setSortBy] = useState<SortOption>('recent');
   const [category, setCategory] = useState('All');
   const [activePostId, setActivePostId] = useState<string | null>(null);
-  useEffect(() => {
-    fetchPosts();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchPosts();
+    }, [])
+  );
 
   function fetchPosts() {
     api.get('/api/posts')
@@ -87,7 +91,27 @@ export default function PostScreen() {
       console.error(err);
     }
   }
-
+  function handleDelete(postId: string) {
+    Alert.alert(
+      'Delete post?',
+      'This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/posts/${postId}`);
+              setPosts(prev => prev.filter(p => p._id !== postId));
+            } catch (err) {
+              console.error(err);
+            }
+          },
+        },
+      ]
+    );
+  }
   const filteredPosts = useMemo(() => {
     let result = posts;
     if (category !== 'All') {
@@ -146,13 +170,14 @@ const activePost = posts.find(p => p._id === activePostId);
                 currentUserId={user?.id ?? ''}
                 onLikePress={() => handleLike(item._id)}
                 onCommentPress={() => setActivePostId(item._id)}
+                onDeletePress={() => handleDelete(item._id)}
               />
             )
           }
           contentContainerStyle={{ paddingBottom: 90 }}
         />
 
-        <TouchableOpacity style={styles.uploadButton} onPress={() => {}}>
+        <TouchableOpacity style={styles.uploadButton} onPress={() => router.push('../upload')}>
           <Ionicons name="add" size={28} color="#fff" />
         </TouchableOpacity>
         <CommentsModal

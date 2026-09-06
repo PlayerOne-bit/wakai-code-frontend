@@ -1,11 +1,13 @@
-// components/Post/PostCard.tsx
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import MediaItem from './MediaItem';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const CARD_HORIZONTAL_MARGIN = 12 * 2; // matches card's marginHorizontal on both sides
-const MAX_IMAGE_HEIGHT = Dimensions.get('window').height * 0.6; // stops extreme portraits from dominating the feed
+const CARD_MARGIN = 12;
+const CARD_PADDING = 12;
+const AVAILABLE_WIDTH = SCREEN_WIDTH - (CARD_MARGIN * 2) - (CARD_PADDING * 2);
+const MEDIA_HEIGHT = 240; // fixed height for the carousel — items letterbox/fit within it via contentFit/resizeMode
 
 type Comment = {
   _id: string;
@@ -15,11 +17,18 @@ type Comment = {
   createdAt: string;
 };
 
+type Media = {
+  url: string;
+  type: 'image' | 'video' | 'file';
+  fileName: string;
+};
+
 type Post = {
   _id: string;
   title: string;
   description?: string;
-  imageUrl?: string;
+  imageUrl?: string; // legacy single-image posts, still supported for display
+  media?: Media[];
   createdAt: string;
   likes?: string[];
   comments?: Comment[];
@@ -31,54 +40,83 @@ type Props = {
   currentUserId: string;
   onLikePress: () => void;
   onCommentPress: () => void;
+  onDeletePress: () => void;
 };
 
-export default function PostCard({ post, currentUserId, onLikePress, onCommentPress }: Props) {
+export default function PostCard({
+  post,
+  currentUserId,
+  onLikePress,
+  onCommentPress,
+  onDeletePress,
+}: Props) {
   const likes = post.likes ?? [];
   const comments = post.comments ?? [];
   const liked = likes.includes(currentUserId);
+  const [activeIndex, setActiveIndex] = useState(0);
 
-  // Real pixel dimensions of the source image, fetched once when the
-  // uri is known — Image.getSize hits the image's own metadata, it
-  // doesn't wait for the image to actually render first.
-  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
-
-  useEffect(() => {
-    if (post.imageUrl) {
-      Image.getSize(
-        post.imageUrl,
-        (width, height) => setImageSize({ width, height }),
-        (err) => console.error('Failed to get image size', err)
-      );
-    }
-  }, [post.imageUrl]);
-
-  const cardWidth = SCREEN_WIDTH - CARD_HORIZONTAL_MARGIN;
-  const computedHeight = imageSize
-    ? Math.min(cardWidth * (imageSize.height / imageSize.width), MAX_IMAGE_HEIGHT)
-    : undefined;
+  // Combine legacy single-image posts with the new media array so
+  // old posts still render exactly as before, with zero special-casing
+  // anywhere else in this component.
+  const mediaItems: Media[] =
+    post.media && post.media.length > 0
+      ? post.media
+      : post.imageUrl
+      ? [{ url: post.imageUrl, type: 'image', fileName: 'image' }]
+      : [];
 
   const formattedDate = new Date(post.createdAt).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
+  function handleScroll(event: any) {
+    const index = Math.round(event.nativeEvent.contentOffset.x / AVAILABLE_WIDTH);
+    setActiveIndex(index);
+  }
 
   return (
     <View style={styles.card}>
-      {post.imageUrl && computedHeight ? (
-        <Image
-          source={{ uri: post.imageUrl }}
-          style={[styles.image, { width: cardWidth, height: computedHeight }]}
-          resizeMode="contain"
-        />
-      ) : null}
+      <TouchableOpacity style={styles.deleteButton} onPress={onDeletePress}>
+        <Ionicons name="trash-outline" size={16} color="#e0455f" />
+      </TouchableOpacity>
 
       <Text style={styles.title}>{post.title}</Text>
 
       {post.description ? (
         <Text style={styles.description}>{post.description}</Text>
       ) : null}
+
+      {mediaItems.length > 0 && (
+        <View style={styles.mediaWrapper}>
+          <FlatList
+            data={mediaItems}
+            keyExtractor={(_, i) => `${post._id}-media-${i}`}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            renderItem={({ item }) => (
+              <MediaItem media={item} width={AVAILABLE_WIDTH} height={MEDIA_HEIGHT} />
+            )}
+          />
+
+          {mediaItems.length > 1 && (
+            <View style={styles.dotsRow}>
+              {mediaItems.map((_, i) => (
+                <View
+                  key={i}
+                  style={[styles.dot, i === activeIndex && styles.dotActive]}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      )}
 
       <View style={styles.footer}>
         <View style={styles.statsRow}>
@@ -108,22 +146,51 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 12,
+    padding: CARD_PADDING,
     marginVertical: 6,
-    marginHorizontal: 12,
+    marginHorizontal: CARD_MARGIN,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
-  image: { borderRadius: 8, marginBottom: 8, backgroundColor: '#f0f0f0' },
-  title: { fontSize: 16, fontWeight: '600' },
-  description: { fontSize: 14, color: '#555', marginTop: 4 },
+  deleteButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 1,
+    backgroundColor: '#fff',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  title: { fontSize: 16, fontWeight: '600', paddingRight: 32 },
+  description: { fontSize: 14, color: '#555', marginTop: 4, marginBottom: 8 },
+  mediaWrapper: { marginBottom: 8 },
+  dotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 6,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#ddd',
+    marginHorizontal: 3,
+  },
+  dotActive: { backgroundColor: '#e0455f', width: 8, height: 8, borderRadius: 4 },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 4,
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#eee',

@@ -1,15 +1,18 @@
-import React from 'react';
+// app/(tabs)/index.tsx
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { useAuth } from '../../context/AuthContext';
+import { router,useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-const mockStats = {
-  earnings: 12400.5,
-  posts: 18,
-  projects: 5,
-  likes: 342,
-  comments: 97,
-  clients: 12,
+import api from '../../api/config';
+import { useAuth } from '../../context/AuthContext';
+
+type Stats = {
+  posts: number;
+  likes: number;
+  comments: number;
+  projects: number;
+  clients: number;
+  earnings: number;
 };
 
 type StatCardProps = {
@@ -28,34 +31,47 @@ function StatCard({ label, value }: StatCardProps) {
 
 export default function DashboardScreen() {
   const { logout } = useAuth();
+  const [stats, setStats] = useState<Stats | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      api.get('/api/dashboard/stats')
+        .then(res => setStats(res.data))
+        .catch(err => console.error(err));
+    }, [])
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <Text style={styles.heading}>Dashboard</Text>
-        
+
         <View style={styles.grid}>
-          <StatCard label="Earnings" value={`$${mockStats.earnings.toFixed(2)}`} />
-          <StatCard label="Posts" value={mockStats.posts} />
-          <StatCard label="Projects" value={mockStats.projects} />
-          <StatCard label="Likes" value={mockStats.likes} />
-          <StatCard label="Comments" value={mockStats.comments} />
-          <StatCard label="Clients" value={mockStats.clients} />
+          <StatCard label="Earnings" value={`$${(stats?.earnings ?? 0).toFixed(2)}`} />
+          <StatCard label="Posts" value={stats?.posts ?? 0} />
+          <StatCard label="Projects" value={stats?.projects ?? 0} />
+          <StatCard label="Likes" value={stats?.likes ?? 0} />
+          <StatCard label="Comments" value={stats?.comments ?? 0} />
+          <StatCard label="Clients" value={stats?.clients ?? 0} />
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={async () => {
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={async () => {
             await logout();
             router.replace('/login');
-          }}>
+          }}
+        >
           <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
-  content: { padding: 16 },
+  content: { padding: 16, paddingBottom: 100 },
   heading: { fontSize: 24, fontWeight: '700', marginBottom: 16 },
   grid: {
     flexDirection: 'row',
