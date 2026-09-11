@@ -1,6 +1,6 @@
 // app/(tabs)/post.tsx
-import React, { useEffect, useState, useMemo } from 'react';
-import { View, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useEffect, useState, useMemo ,useCallback } from 'react';
+import { View,Text, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../api/config';
 import PostCard from '../../components/Post/PostCard';
@@ -10,7 +10,7 @@ import ProfileHeader from '../../components/Profile/ProfileHeader';
 import { useAuth } from '../../context/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router,useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
+import { useUpload } from '../../context/UploadContext';
 
 type Comment = {
   _id: string;
@@ -41,11 +41,12 @@ export default function PostScreen() {
   const [sortBy, setSortBy] = useState<SortOption>('recent');
   const [category, setCategory] = useState('All');
   const [activePostId, setActivePostId] = useState<string | null>(null);
-  useFocusEffect(
-    useCallback(() => {
-      fetchPosts();
-    }, [])
-  );
+  const { pendingUploads, onUploadComplete } = useUpload();
+
+  useEffect(() => {
+    const unsubscribe = onUploadComplete(() => fetchPosts());
+    return unsubscribe;
+  }, []);
 
   function fetchPosts() {
     api.get('/api/posts')
@@ -138,6 +139,14 @@ const activePost = posts.find(p => p._id === activePostId);
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.container}>
+        {pendingUploads.length > 0 && (
+        <View style={styles.uploadBanner}>
+          <ActivityIndicator size="small" color="#e0455f" />
+          <Text style={styles.uploadBannerText}>
+            Uploading media to {pendingUploads.length} post{pendingUploads.length > 1 ? 's' : ''}...
+          </Text>
+        </View>
+      )}
         <FlatList
           data={listData}
           keyExtractor={item => (item.type === 'filter' ? 'filter-bar' : item._id)}
@@ -193,19 +202,27 @@ const activePost = posts.find(p => p._id === activePostId);
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
-  uploadButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#111',
-    justifyContent: 'center',
+    uploadButton: {
+      position: 'absolute',
+      bottom: 20,
+      right: 20,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: '#111',
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    uploadBanner: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
+    backgroundColor: '#fdeef0',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
+  uploadBannerText: { color: '#e0455f', fontSize: 12, marginLeft: 8 },
 });

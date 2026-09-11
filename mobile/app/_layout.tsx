@@ -2,6 +2,8 @@ import { Stack } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { UploadProvider } from '../context/UploadContext';
+
 function LoadingScreen() {
   return (
     <View style={styles.loadingContainer}>
@@ -30,9 +32,11 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
+     <SafeAreaProvider>
       <AuthProvider>
-        <RootNavigator />
+        <UploadProvider>
+          <RootNavigator />
+        </UploadProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

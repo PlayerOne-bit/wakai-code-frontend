@@ -1,5 +1,7 @@
 // app/upload.tsx
 import React, { useState } from 'react';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import { useUpload } from '../context/UploadContext';
 import {
   View,
   Text,
@@ -34,7 +36,7 @@ export default function UploadScreen() {
   const [items, setItems] = useState<PickedItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-
+  const { startUpload } = useUpload();
   async function pickMedia() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -103,16 +105,12 @@ export default function UploadScreen() {
       if (items.length > 0) {
         const formData = new FormData();
         items.forEach(item => {
-          formData.append('media', {
-            uri: item.uri,
-            name: item.name,
-            type: item.mimeType,
-          } as any);
+          formData.append('media', { uri: item.uri, name: item.name, type: item.mimeType } as any);
         });
 
-        await api.post(`/api/upload/post-media/${newPostId}`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        // Fire and forget — not awaited. The post itself is already
+        // created, so closing this screen now is safe; media catches up.
+        startUpload(newPostId, formData, items.length);
       }
 
       router.back();
@@ -124,85 +122,87 @@ export default function UploadScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.heading}>New Post</Text>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="close" size={26} color="#333" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.pickerRow}>
-        <TouchableOpacity style={styles.pickerButton} onPress={pickMedia}>
-          <Ionicons name="images-outline" size={20} color="#e0455f" />
-          <Text style={styles.pickerButtonText}>Photos / Videos</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.pickerButton} onPress={pickFiles}>
-          <Ionicons name="document-outline" size={20} color="#e0455f" />
-          <Text style={styles.pickerButtonText}>Files</Text>
-        </TouchableOpacity>
-      </View>
-
-      {items.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.previewRow}>
-          {items.map((item, index) => (
-            <View key={`${item.uri}-${index}`} style={styles.previewItem}>
-              {item.kind === 'image' ? (
-                <Image source={{ uri: item.uri }} style={styles.previewThumb} />
-              ) : (
-                <View style={styles.previewFileBox}>
-                  <Ionicons
-                    name={item.kind === 'video' ? 'videocam-outline' : 'document-outline'}
-                    size={24}
-                    color="#999"
-                  />
-                  <Text style={styles.previewFileName} numberOfLines={1}>{item.name}</Text>
-                </View>
-              )}
-              <TouchableOpacity style={styles.removeBadge} onPress={() => removeItem(index)}>
-                <Ionicons name="close" size={12} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </ScrollView>
-      )}
-
-      <TextInput
-        style={styles.input}
-        placeholder="Title"
-        value={title}
-        onChangeText={setTitle}
-      />
-
-      <TextInput
-        style={[styles.input, styles.textArea]}
-        placeholder="Description (optional)"
-        value={description}
-        onChangeText={setDescription}
-        multiline
-      />
-
-      <Text style={styles.label}>Category</Text>
-      <View style={styles.categoryRow}>
-        {CATEGORIES.map(cat => (
-          <TouchableOpacity
-            key={cat}
-            style={[styles.categoryChip, category === cat && styles.categoryChipActive]}
-            onPress={() => setCategory(cat)}
-          >
-            <Text style={[styles.categoryChipText, category === cat && styles.categoryChipTextActive]}>
-              {cat}
-            </Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <Text style={styles.heading}>New Post</Text>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="close" size={26} color="#333" />
           </TouchableOpacity>
-        ))}
-      </View>
+        </View>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+        <View style={styles.pickerRow}>
+          <TouchableOpacity style={styles.pickerButton} onPress={pickMedia}>
+            <Ionicons name="images-outline" size={20} color="#e0455f" />
+            <Text style={styles.pickerButtonText}>Photos / Videos</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.pickerButton} onPress={pickFiles}>
+            <Ionicons name="document-outline" size={20} color="#e0455f" />
+            <Text style={styles.pickerButtonText}>Files</Text>
+          </TouchableOpacity>
+        </View>
 
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={submitting}>
-        {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>Post</Text>}
-      </TouchableOpacity>
-    </ScrollView>
+        {items.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.previewRow}>
+            {items.map((item, index) => (
+              <View key={`${item.uri}-${index}`} style={styles.previewItem}>
+                {item.kind === 'image' ? (
+                  <Image source={{ uri: item.uri }} style={styles.previewThumb} />
+                ) : (
+                  <View style={styles.previewFileBox}>
+                    <Ionicons
+                      name={item.kind === 'video' ? 'videocam-outline' : 'document-outline'}
+                      size={24}
+                      color="#999"
+                    />
+                    <Text style={styles.previewFileName} numberOfLines={1}>{item.name}</Text>
+                  </View>
+                )}
+                <TouchableOpacity style={styles.removeBadge} onPress={() => removeItem(index)}>
+                  <Ionicons name="close" size={12} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+
+        <TextInput
+          style={styles.input}
+          placeholder="Title"
+          value={title}
+          onChangeText={setTitle}
+        />
+
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          placeholder="Description (optional)"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+        />
+
+        <Text style={styles.label}>Category</Text>
+        <View style={styles.categoryRow}>
+          {CATEGORIES.map(cat => (
+            <TouchableOpacity
+              key={cat}
+              style={[styles.categoryChip, category === cat && styles.categoryChipActive]}
+              onPress={() => setCategory(cat)}
+            >
+              <Text style={[styles.categoryChipText, category === cat && styles.categoryChipTextActive]}>
+                {cat}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={submitting}>
+          {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>Post</Text>}
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
